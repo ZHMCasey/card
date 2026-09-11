@@ -88,11 +88,14 @@
     color: var(--paper); font: inherit; cursor: pointer; text-align: right;
   }
   .rows button.done { color: var(--brass); }
-  .qr-toggle {
-    margin: 18px auto 0; padding: 6px 10px;
-    background: none; border: 0; color: var(--paper-dim);
-    font: inherit; font-size: 15px; cursor: pointer;
+  .foot {
+    display: flex; justify-content: center; align-items: center; gap: 12px;
+    margin-top: 18px; color: var(--paper-dim); font-size: 15px;
   }
+  .foot button { background: none; border: 0; padding: 6px 4px; color: var(--paper-dim); font: inherit; cursor: pointer; }
+  .foot button:hover { color: var(--paper); }
+  .foot .dot { opacity: .5; }
+  .rows .sel { color: var(--paper); user-select: all; -webkit-user-select: all; }
   #qr { display: none; margin: 14px auto 0; padding: 12px; background: #fff; border-radius: 12px; width: max-content; }
   #qr.on { display: block; }
   a:focus-visible, button:focus-visible { outline: 2px solid var(--brass); outline-offset: 3px; }
@@ -109,7 +112,11 @@
   <div class="spacer"></div>
   <a class="book" id="book" hidden>Book a meeting</a>
   <a class="save" href="contact.vcf">Save contact</a>
-  <button class="qr-toggle" id="qrBtn" hidden>Show QR code</button>
+  <div class="foot">
+    <button type="button" id="qrBtn" hidden>Show QR code</button>
+    <span class="dot" id="dot" hidden>&middot;</span>
+    <button type="button" id="shareBtn">Share</button>
+  </div>
   <div id="qr"></div>
 </main>
 
@@ -152,11 +159,37 @@
     ? `<li><span>${r.label}</span><button type="button" data-copy="${r.text}">${r.text}</button></li>`
     : `<li><span>${r.label}</span><a href="${r.href}">${r.text}</a></li>`
   ).join("");
+  // 复制：先试剪贴板 API，再试老方法；都失败就不显示 Copied，改成可长按选中
+  async function copyText(t) {
+    try { if (navigator.clipboard && window.isSecureContext) { await navigator.clipboard.writeText(t); return true; } } catch (e) {}
+    try {
+      const ta = document.createElement("textarea"); ta.value = t; ta.setAttribute("readonly", "");
+      ta.style.cssText = "position:fixed;top:0;left:0;opacity:0"; document.body.appendChild(ta);
+      ta.select(); ta.setSelectionRange(0, t.length);
+      const ok = document.execCommand("copy"); document.body.removeChild(ta); return ok;
+    } catch (e) { return false; }
+  }
   document.querySelectorAll("[data-copy]").forEach(b => b.addEventListener("click", async () => {
-    try { await navigator.clipboard.writeText(b.dataset.copy); } catch (e) {}
-    b.textContent = "Copied"; b.classList.add("done");
-    setTimeout(() => { b.textContent = b.dataset.copy; b.classList.remove("done"); }, 1500);
+    if (await copyText(b.dataset.copy)) {
+      b.textContent = "Copied"; b.classList.add("done");
+      setTimeout(() => { b.textContent = b.dataset.copy; b.classList.remove("done"); }, 1500);
+    } else {
+      const li = b.parentElement, span = document.createElement("span");
+      span.className = "sel"; span.textContent = b.dataset.copy;
+      li.querySelector("span").textContent = "WeChat \u00b7 long-press to copy";
+      b.replaceWith(span);
+    }
   }));
+  // 分享：优先系统分享面板；没有就复制链接；微信里提示用右上角菜单
+  const shareBtn = document.getElementById("shareBtn");
+  const inWeChat = /MicroMessenger/i.test(navigator.userAgent);
+  const flash = (el, msg) => { const t = el.textContent; el.textContent = msg; setTimeout(() => { el.textContent = t; }, 2000); };
+  shareBtn.addEventListener("click", async () => {
+    if (inWeChat) { flash(shareBtn, "Tap \u00b7\u00b7\u00b7 top right to share"); return; }
+    const data = { title: CARD.name, text: CARD.name + " \u2014 " + CARD.title + (CARD.company ? ", " + CARD.company : ""), url: location.href };
+    if (navigator.share) { try { await navigator.share(data); return; } catch (e) { if (e && e.name === "AbortError") return; } }
+    flash(shareBtn, (await copyText(location.href)) ? "Link copied" : "Copy failed \u2014 copy the address bar");
+  });
   if (CARD.meeting) {
     const bk = document.getElementById("book");
     bk.href = CARD.meeting; bk.hidden = false;
@@ -165,7 +198,7 @@
   // 二维码：只在页面已经上线（http/https）时显示，编码的是当前页面地址
   const qrBtn = document.getElementById("qrBtn");
   if (location.protocol.startsWith("http")) {
-    qrBtn.hidden = false;
+    qrBtn.hidden = false; document.getElementById("dot").hidden = false;
     qrBtn.addEventListener("click", () => {
       const box = document.getElementById("qr");
       if (box.classList.toggle("on")) {

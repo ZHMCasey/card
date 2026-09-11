@@ -96,8 +96,9 @@
   .foot button:hover { color: var(--paper); }
   .foot .dot { opacity: .5; }
   .rows .sel { color: var(--paper); user-select: all; -webkit-user-select: all; }
-  #qr { display: none; margin: 14px auto 0; padding: 12px; background: #fff; border-radius: 12px; width: max-content; }
+  #qr { display: none; margin: 16px auto 0; width: min(232px, 62vw); }
   #qr.on { display: block; }
+  #qr img { display: block; width: 100%; height: auto; }
   a:focus-visible, button:focus-visible { outline: 2px solid var(--brass); outline-offset: 3px; }
 </style>
 </head>
@@ -204,10 +205,9 @@
       if (box.classList.toggle("on")) {
         qrBtn.textContent = "Hide QR code";
         if (!box.hasChildNodes()) {
-          const s = document.createElement("script");
-          s.src = "https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js";
-          s.onload = () => new QRCode(box, { text: location.href, width: 168, height: 168, correctLevel: QRCode.CorrectLevel.M });
-          document.body.appendChild(s);
+          const im = document.createElement("img");
+          im.src = "qr.svg"; im.alt = "QR code for this card";
+          box.appendChild(im);
         }
       } else {
         qrBtn.textContent = "Show QR code";

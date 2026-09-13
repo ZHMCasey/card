@@ -88,6 +88,11 @@
     color: var(--paper); font: inherit; cursor: pointer; text-align: right;
   }
   .rows button.done { color: var(--brass); }
+  .hint {
+    margin: 12px 0 0; text-align: center; font-size: 14px; line-height: 1.4;
+    color: var(--brass);
+  }
+  .hint[hidden] { display: none; }
   .foot {
     display: flex; justify-content: center; align-items: center; gap: 12px;
     margin-top: 18px; color: var(--paper-dim); font-size: 15px;
@@ -112,7 +117,8 @@
   <ul class="rows" id="rows"></ul>
   <div class="spacer"></div>
   <a class="book" id="book" hidden>Book a meeting</a>
-  <a class="save" href="contact.vcf">Save contact</a>
+  <a class="save" id="save" href="contact.vcf" download="Casey Ma.vcf">Save contact</a>
+  <p class="hint" id="hint" hidden></p>
   <div class="foot">
     <button type="button" id="qrBtn" hidden>Show QR code</button>
     <span class="dot" id="dot" hidden>&middot;</span>
@@ -185,6 +191,15 @@
   const shareBtn = document.getElementById("shareBtn");
   const inWeChat = /MicroMessenger/i.test(navigator.userAgent);
   const flash = (el, msg) => { const t = el.textContent; el.textContent = msg; setTimeout(() => { el.textContent = t; }, 2000); };
+  // 微信内置浏览器存不了通讯录，引导去系统浏览器打开
+  if (inWeChat) {
+    document.getElementById("save").addEventListener("click", (e) => {
+      e.preventDefault();
+      const h = document.getElementById("hint");
+      h.textContent = "\u5fae\u4fe1\u5185\u65e0\u6cd5\u5b58\u5165\u901a\u8baf\u5f55\uff1a\u8bf7\u70b9\u53f3\u4e0a\u89d2 \u00b7\u00b7\u00b7 \u9009\u201c\u5728\u6d4f\u89c8\u5668\u4e2d\u6253\u5f00\u201d";
+      h.hidden = false;
+    });
+  }
   shareBtn.addEventListener("click", async () => {
     if (inWeChat) { flash(shareBtn, "Tap \u00b7\u00b7\u00b7 top right to share"); return; }
     const data = { title: CARD.name, text: CARD.name + " \u2014 " + CARD.title + (CARD.company ? ", " + CARD.company : ""), url: location.href };
